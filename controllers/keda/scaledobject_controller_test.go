@@ -1454,19 +1454,24 @@ var _ = Describe("ScaledObjectController", func() {
 		// Create the ScaledObject without specifying name.
 		so := &kedav1alpha1.ScaledObject{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      soName,
-				Namespace: "default",
-				Annotations: map[string]string{
-					"annotation-email": "email@example.com",
-					"annotation-url":   "https://example.com",
-				},
+				Name:        soName,
+				Namespace:   "default",
+				Annotations: map[string]string{},
 			},
 			Spec: kedav1alpha1.ScaledObjectSpec{
 				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
 					Name: deploymentName,
 				},
 				Advanced: &kedav1alpha1.AdvancedConfig{
-					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{},
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+						Annotations: map[string]string{
+							"annotation-email": "email@example.com",
+							"annotation-url":   "https://example.com",
+						},
+						Labels: map[string]string{
+							"label-key": "label-value",
+						},
+					},
 				},
 				Triggers: []kedav1alpha1.ScaleTriggers{
 					{
@@ -1494,8 +1499,19 @@ var _ = Describe("ScaledObjectController", func() {
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			Expect(err).ToNot(HaveOccurred())
 			annotations := make(map[string]string)
+			labels := make(map[string]string)
 			annotations["new-annotation"] = "new-annotation-value"
-			so.SetAnnotations(annotations)
+			labels["new-label"] = "new-label-value"
+			so := &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+							Annotations: annotations,
+							Labels:      labels,
+						},
+					},
+				},
+			}
 			return k8sClient.Update(context.Background(), so)
 		}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).ShouldNot(HaveOccurred())
 		testLogger.Info("annotation is set")
